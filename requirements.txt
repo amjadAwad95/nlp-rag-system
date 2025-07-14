@@ -4,3 +4,5 @@ langchain-community==0.3.27
 transformers==4.53.2
 sentence-transformers==5.0.0
 pypdf==5.8.0
+python-dotenv==1.1.1
+langchain-google-genai==2.1.7
