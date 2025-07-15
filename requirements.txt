@@ -10,3 +10,4 @@ langchain-ollama==0.3.4
 langchain-text-splitters==0.3.8
 langchain-huggingface==0.3.0
 langchain-mistralai==0.2.11
+gradio==5.37.0
