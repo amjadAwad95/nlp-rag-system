@@ -1,0 +1,10 @@
+version: "3"
+
+services:
+  nlp-rag-system:
+    container_name: nlp-rag-system-container
+    build: .
+    ports:
+      - "7860:7860"
+    env_file:
+      - ./.envg
