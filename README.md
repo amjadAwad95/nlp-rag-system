@@ -87,6 +87,10 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+or
+```bash
+docker-compose -f docker-compose.yml up --build -d
+```
 
 ## Conclusion
 
