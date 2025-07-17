@@ -5,6 +5,11 @@ model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
 
 def split_to_sentences(text):
+    """
+    Take a sentence and split it into a list of sentences.
+    :param text: text to split
+    :return: a list of sentences
+    """
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
     clean_sentences = []
     buffer = ""
@@ -22,6 +27,13 @@ def split_to_sentences(text):
 
 
 def highlight_text(answer_text, source_docs, similarity_threshold=0.65):
+    """
+    compute the similarity between the generated text and the original text to the highlighted the generated text.
+    :param answer_text: the generated text
+    :param source_docs: the original texts
+    :param similarity_threshold: the similarity threshold
+    :return: highlighted text
+    """
     all_source_sentences = []
     sentence_doc_map = []
 
