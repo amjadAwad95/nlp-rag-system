@@ -8,6 +8,7 @@ from langchain_mistralai import ChatMistralAI
 from langchain.chains import RetrievalQA
 from utils import clean
 from dotenv import load_dotenv
+from utils import highlight_text
 
 load_dotenv()
 
@@ -39,22 +40,34 @@ rag_pipeline = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, return_
 
 def generate(query):
     response = rag_pipeline.invoke(query)
+    raw_answer = response["result"]
+    source_docs = response["source_documents"]
 
-    return response["result"]
+    highlighted = highlight_text(raw_answer, source_docs)
+
+    return raw_answer, highlighted
 
 
 css = """
     .gradio-container {
-    max-width: 800px;
-    margin: 0 auto;
+        max-width: 800px;
+        margin: 0 auto;
     }
     section {
-    margin-bottom: 2em !important;
+        margin-bottom: 2em !important;
     }
     .markdown-body h3 {
-    margin-top: 1.5em;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.3em;
+        margin-top: 1.5em;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 0.3em;
+    }
+    span.source {
+        color: #1976d2;
+        font-size: 0.9em;
+        margin-left: 8px;
+    }
+    span.highlight {
+        background-color: #fff59d;
     }
 """
 
@@ -76,13 +89,20 @@ with gr.Blocks(title="NLP Q&A System", css=css) as demo:
         submit_btn = gr.Button("Generate Analysis", variant="primary")
         clear_btn = gr.Button("Clear", size="sm")
 
-    gr.Markdown("### 2. Generated Analysis")
+    gr.Markdown("### 2. Generated Answer")
     answer = gr.Markdown(
         value="*Your detailed analysis will appear here...*",
         elem_classes="markdown-body"
     )
 
-    gr.Markdown("### 3. Example Queries")
+    gr.Markdown("---")
+
+    gr.Markdown("### 3. Highlighted Answer with Source")
+    highlighted_answer = gr.HTML(
+        value="<i>Highlighted source information will appear here...</i>"
+    )
+
+    gr.Markdown("### 4. Example Queries")
     gr.Examples(
         examples=[
             "Explain the quadratic complexity problem in attention",
@@ -99,13 +119,13 @@ with gr.Blocks(title="NLP Q&A System", css=css) as demo:
     submit_btn.click(
         fn=generate,
         inputs=question,
-        outputs=answer
+        outputs=[answer, highlighted_answer]
     )
 
     clear_btn.click(
-        fn=lambda: ("", "*Cleared - Enter a new query above*"),
+        fn=lambda: ("", "*Cleared - Enter a new query above*", "*Cleared*"),
         inputs=None,
-        outputs=[question, answer]
+        outputs=[question, answer, highlighted_answer]
     )
 
 demo.launch(
