@@ -8,7 +8,7 @@ from langchain_mistralai import ChatMistralAI
 from langchain.chains import RetrievalQA
 from utils import clean
 from dotenv import load_dotenv
-from utils import highlight_text
+from utils import highlight_documents
 
 load_dotenv()
 
@@ -43,9 +43,11 @@ def generate(query):
     raw_answer = response["result"]
     source_docs = response["source_documents"]
 
-    highlighted = highlight_text(raw_answer, source_docs)
+    highlighted_docs = highlight_documents(source_docs, raw_answer)
 
-    return raw_answer, highlighted
+    highlighted_html = "<hr>".join([f"<div>{doc}</div>" for doc in highlighted_docs])
+
+    return raw_answer, highlighted_html
 
 
 css = """
@@ -73,49 +75,47 @@ css = """
 
 with gr.Blocks(title="NLP Q&A System", css=css) as demo:
     gr.Markdown("""
-    # <center>NLP Q&A System</center>
-    *<center>Speech and Language Processing - Third Edition</center>*
-    """)
+        # <center>NLP Q&A System</center>
+        *<center>Speech and Language Processing - Third Edition</center>*
+        """)
+    with gr.Tabs():
+        with gr.Tab("Ask a Question"):
+            gr.Markdown("### 1. Enter Your Query")
+            question = gr.Textbox(
+                label="",
+                placeholder="Ask about attention mechanisms, training protocols, or architectural variants...",
+                lines=3,
+                max_lines=6
+            )
 
-    gr.Markdown("### 1. Enter Your Query")
-    question = gr.Textbox(
-        label="",
-        placeholder="Ask about attention mechanisms, training protocols, or architectural variants...",
-        lines=3,
-        max_lines=6
-    )
+            with gr.Group():
+                submit_btn = gr.Button("Generate Analysis", variant="primary")
+                clear_btn = gr.Button("Clear", size="sm")
 
-    with gr.Group():
-        submit_btn = gr.Button("Generate Analysis", variant="primary")
-        clear_btn = gr.Button("Clear", size="sm")
+            gr.Markdown("### 2. Generated Answer")
+            answer = gr.Markdown(
+                value="*Your detailed analysis will appear here...*",
+                elem_classes="markdown-body"
+            )
 
-    gr.Markdown("### 2. Generated Answer")
-    answer = gr.Markdown(
-        value="*Your detailed analysis will appear here...*",
-        elem_classes="markdown-body"
-    )
+            gr.Markdown("### 3. Example Queries")
+            gr.Examples(
+                examples=[
+                    "Explain the quadratic complexity problem in attention",
+                    "Compare encoder-only and decoder-only architectures",
+                    "How does transformers work?"
+                ],
+                inputs=question,
+                label="Try these examples →"
+            )
 
-    gr.Markdown("---")
+        with gr.Tab("Highlighted Documents"):
+            gr.Markdown("### Highlighted Sentences from Source Documents")
+            highlighted_answer = gr.HTML(
+                value="<i>Highlighted source information will appear here...</i>"
+            )
 
-    gr.Markdown("### 3. Highlighted Answer with Source")
-    highlighted_answer = gr.HTML(
-        value="<i>Highlighted source information will appear here...</i>"
-    )
-
-    gr.Markdown("### 4. Example Queries")
-    gr.Examples(
-        examples=[
-            "Explain the quadratic complexity problem in attention",
-            "Compare encoder-only and decoder-only architectures",
-            "How does transformers work?"
-        ],
-        inputs=question,
-        label="Try these examples →"
-    )
-
-    gr.Markdown("---")
-    gr.Markdown("*Academic use only - Generated content may require verification*")
-
+    # Result binding (used across both tabs)
     submit_btn.click(
         fn=generate,
         inputs=question,
@@ -127,6 +127,7 @@ with gr.Blocks(title="NLP Q&A System", css=css) as demo:
         inputs=None,
         outputs=[question, answer, highlighted_answer]
     )
+
 
 demo.launch(
     debug=True,
