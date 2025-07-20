@@ -26,57 +26,42 @@ def split_to_sentences(text):
     return clean_sentences
 
 
-def highlight_text(answer_text, source_docs, similarity_threshold=0.65):
+def highlight_documents(source_docs, answer_text, similarity_threshold=0.70):
     """
-    compute the similarity between the generated text and the original text to the highlighted the generated text.
-    :param answer_text: the generated text
-    :param source_docs: the original texts
-    :param similarity_threshold: the similarity threshold
-    :return: highlighted text
+    Highlight the source documents according to the similarity threshold.
+    :param source_docs: source documents
+    :param answer_text: generated text
+    :param similarity_threshold: similarity threshold
+    :return: the source documents with highlighted text
     """
-    all_source_sentences = []
-    sentence_doc_map = []
+    sentence_docs = [split_to_sentences(doc.page_content) for doc in source_docs]
 
-    doc_names = []
-    for doc in source_docs:
-        name = doc.metadata.get("source", "Unknown source")
-        doc_names.append(name)
+    all_sentences = [sent for doc in sentence_docs for sent in doc]
+    sentence_embeddings = model.encode(all_sentences, convert_to_tensor=True)
 
-    for doc_idx, doc in enumerate(source_docs):
-        text = doc.page_content
-        sentences = split_to_sentences(text)
-        all_source_sentences.extend(sentences)
-        sentence_doc_map.extend([doc_idx] * len(sentences))
+    sentence_encodings = []
+    idx = 0
+    for doc in sentence_docs:
+        n = len(doc)
+        sentence_encodings.append(sentence_embeddings[idx:idx + n])
+        idx += n
 
     answer_sentences = split_to_sentences(answer_text)
+    answer_embeddings = model.encode(answer_sentences, convert_to_tensor=True)
 
-    answer_emb = model.encode(answer_sentences, convert_to_tensor=True)
-    source_emb = model.encode(all_source_sentences, convert_to_tensor=True)
+    highlighted_output = []
 
-    similarity_matrix = util.pytorch_cos_sim(answer_emb, source_emb)
+    for doc_sentences, doc_embeddings in zip(sentence_docs, sentence_encodings):
+        sim_matrix = util.pytorch_cos_sim(doc_embeddings, answer_embeddings)
+        max_similarities = sim_matrix.max(dim=1).values  # Best similarity per sentence
 
-    highlighted_answer = []
+        highlighted_sentences = []
+        for sentence, sim_score in zip(doc_sentences, max_similarities):
+            if sim_score.item() >= similarity_threshold:
+                highlighted_sentences.append(f'<span style="background-color: red;">{sentence}</span>')
+            else:
+                highlighted_sentences.append(sentence)
 
-    for i, answer_sent in enumerate(answer_sentences):
-        if re.fullmatch(r"^\d+\.?$", answer_sent):
-            highlighted_answer.append(answer_sent)
-            continue
+        highlighted_output.append(" ".join(highlighted_sentences))
 
-        sim_row = similarity_matrix[i]
-        above_threshold_indices = (sim_row >= similarity_threshold).nonzero(as_tuple=True)[0].tolist()
-
-        if above_threshold_indices:
-            matched_docs = set(sentence_doc_map[idx] for idx in above_threshold_indices)
-            matched_doc_names = sorted(set(doc_names[doc_idx] for doc_idx in matched_docs))
-            doc_label_str = ", ".join(matched_doc_names)
-
-            # Add yellow background for the sentence and blue for the source
-            highlighted_sentence = (
-                f'<span style="background-color: red;">{answer_sent}</span> '
-                f'<span style="color: #1976d2; font-size: 0.9em;">[Source: {doc_label_str}]</span>'
-            )
-            highlighted_answer.append(highlighted_sentence)
-        else:
-            highlighted_answer.append(answer_sent)
-
-    return "<br><br>".join(highlighted_answer)
+    return highlighted_output
