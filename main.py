@@ -1,30 +1,17 @@
-import os
 import gradio as gr
-from langchain.document_loaders import PyPDFLoader
 from langchain_text_splitters import SentenceTransformersTokenTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
 from langchain_mistralai import ChatMistralAI
 from langchain.chains import RetrievalQA
-from utils import clean
 from dotenv import load_dotenv
 from utils import highlight_documents
+from utils import load_documents
+from reranker import HuggingFaceCrossEncoderReranker
 
 load_dotenv()
 
-dir = "documents"
-documents_path = os.listdir(dir)
-documents_path = [f"{dir}/{file}" for file in documents_path]
-
-documents = []
-for file in documents_path:
-    loader = PyPDFLoader(file)
-    loaded_docs = loader.load()
-
-    for doc in loaded_docs:
-        doc.page_content = clean(doc.page_content)
-
-    documents.extend(loaded_docs)
+documents = load_documents()
 
 text_splitter = SentenceTransformersTokenTextSplitter(tokens_per_chunk=300, chunk_overlap=30)
 chunks = text_splitter.split_documents(documents)
@@ -33,7 +20,11 @@ embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-Mi
 
 vectorstore = FAISS.from_documents(documents=chunks, embedding=embedding_model)
 
-retriever  = vectorstore.as_retriever()
+base_retriever  = vectorstore.as_retriever(search_kwargs={"k": 20})
+
+huggingface_reranker = HuggingFaceCrossEncoderReranker()
+retriever = huggingface_reranker.get_reranker(base_retriever)
+
 llm = ChatMistralAI(model="mistral-medium-latest", temperature=0.8, max_retries=2)
 
 rag_pipeline = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, return_source_documents=True)
