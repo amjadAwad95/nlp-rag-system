@@ -1,45 +1,25 @@
 import gradio as gr
-from langchain_text_splitters import SentenceTransformersTokenTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain.vectorstores import FAISS
-from langchain_mistralai import ChatMistralAI
-from langchain.chains import RetrievalQA
 from dotenv import load_dotenv
-from utils import highlight_documents
-from utils import load_documents
-from reranker import HuggingFaceCrossEncoderReranker
+from pipeline import RAGPipeline, PipelineConfig
+from utils import load_documents, highlight_documents
 
 load_dotenv()
 
 documents = load_documents()
-
-text_splitter = SentenceTransformersTokenTextSplitter(tokens_per_chunk=300, chunk_overlap=30)
-chunks = text_splitter.split_documents(documents)
-
-embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-
-vectorstore = FAISS.from_documents(documents=chunks, embedding=embedding_model)
-
-base_retriever  = vectorstore.as_retriever(search_kwargs={"k": 20})
-
-huggingface_reranker = HuggingFaceCrossEncoderReranker()
-retriever = huggingface_reranker.get_reranker(base_retriever)
-
-llm = ChatMistralAI(model="mistral-medium-latest", temperature=0.8, max_retries=2)
-
-rag_pipeline = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, return_source_documents=True)
+pipeline_config = PipelineConfig()
+rag = RAGPipeline(documents)
+rag.setup_pipeline(config=pipeline_config)
 
 def generate(query):
-    response = rag_pipeline.invoke(query)
-    raw_answer = response["result"]
-    source_docs = response["source_documents"]
-
+    raw_answer, source_docs = rag.answer(query)
     highlighted_docs = highlight_documents(source_docs, raw_answer)
-
     highlighted_html = "<hr>".join([f"<div>{doc}</div>" for doc in highlighted_docs])
-
     return raw_answer, highlighted_html
 
+def summarize_answer(query):
+    raw_answer, _ = rag.answer(query)
+    summary = rag.summarize(raw_answer)
+    return summary
 
 css = """
     .gradio-container {
@@ -68,7 +48,8 @@ with gr.Blocks(title="NLP Q&A System", css=css) as demo:
     gr.Markdown("""
         # <center>NLP Q&A System</center>
         *<center>Speech and Language Processing - Third Edition</center>*
-        """)
+    """)
+
     with gr.Tabs():
         with gr.Tab("Ask a Question"):
             gr.Markdown("### 1. Enter Your Query")
@@ -80,12 +61,12 @@ with gr.Blocks(title="NLP Q&A System", css=css) as demo:
             )
 
             with gr.Group():
-                submit_btn = gr.Button("Generate Analysis", variant="primary")
+                submit_btn = gr.Button("Generate Answer", variant="primary")
                 clear_btn = gr.Button("Clear", size="sm")
 
             gr.Markdown("### 2. Generated Answer")
             answer = gr.Markdown(
-                value="*Your detailed analysis will appear here...*",
+                value="*Your detailed answer will appear here...*",
                 elem_classes="markdown-body"
             )
 
@@ -106,19 +87,29 @@ with gr.Blocks(title="NLP Q&A System", css=css) as demo:
                 value="<i>Highlighted source information will appear here...</i>"
             )
 
-    # Result binding (used across both tabs)
+        with gr.Tab("Summarization"):
+            gr.Markdown("### Summarize Answer")
+            summarize_btn = gr.Button("Summarize Answer")
+            summary_output = gr.Markdown(value="*Summary will appear here...*")
+
+    # Event bindings
     submit_btn.click(
         fn=generate,
         inputs=question,
         outputs=[answer, highlighted_answer]
     )
 
-    clear_btn.click(
-        fn=lambda: ("", "*Cleared - Enter a new query above*", "*Cleared*"),
-        inputs=None,
-        outputs=[question, answer, highlighted_answer]
+    summarize_btn.click(
+        fn=summarize_answer,
+        inputs=question,
+        outputs=summary_output
     )
 
+    clear_btn.click(
+        fn=lambda: ("", "*Cleared - Enter a new query above*", "*Cleared*", "*Cleared*"),
+        inputs=None,
+        outputs=[question, answer, highlighted_answer, summary_output]
+    )
 
 demo.launch(
     debug=True,
