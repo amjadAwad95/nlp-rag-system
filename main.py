@@ -1,13 +1,15 @@
 import gradio as gr
 from dotenv import load_dotenv
 from pipeline import RAGPipeline
-from utils import load_documents, highlight_documents
+from utils import load_documents, highlight_documents, load_uploaded_documents
 
 load_dotenv()
 
 documents = load_documents()
 rag = RAGPipeline(documents)
 rag.setup_pipeline()
+
+uploaded_rag_pipeline = {"rag": None}
 
 def generate(query):
     raw_answer, source_docs = rag.answer(query)
@@ -19,6 +21,30 @@ def summarize_answer(query):
     raw_answer, _ = rag.answer(query)
     summary = rag.summarize(raw_answer)
     return summary
+
+
+def setup_user_rag(files):
+    if not files:
+        return "File not found"
+    documents = load_uploaded_documents(files)
+
+    user_rag = RAGPipeline(documents)
+    user_rag.setup_pipeline()
+
+    uploaded_rag_pipeline["rag"] = user_rag
+
+    return "Ready to chat"
+
+
+def user_rag_generate(query):
+    user_rag = uploaded_rag_pipeline["rag"]
+
+    if not uploaded_rag_pipeline["rag"]:
+        return "Please upload PDFs first."
+
+    raw_answer, source_docs = user_rag.answer(query)
+
+    return raw_answer
 
 css = """
     .gradio-container {
@@ -91,7 +117,40 @@ with gr.Blocks(title="NLP Q&A System", css=css) as demo:
             summarize_btn = gr.Button("Summarize Answer")
             summary_output = gr.Markdown(value="*Summary will appear here...*")
 
-    # Event bindings
+        with gr.Tab("Chat with Your Files"):
+            gr.Markdown("### Upload Your PDFs and Ask Questions")
+
+            uploaded_files = gr.File(file_types=[".pdf"], file_count="multiple", label="Upload PDF Files")
+
+            upload_status = gr.Markdown("*No files uploaded yet*")
+
+            uploaded_question = gr.Textbox(
+                placeholder="Ask a question about your uploaded documents...",
+                lines=3
+            )
+
+            uploaded_answer = gr.Markdown(value="*Answer will appear here...*")
+            uploaded_submit = gr.Button("Generate Answer")
+            clear_user_btn = gr.Button("Clear", size="sm")
+
+            uploaded_files.change(
+                fn=setup_user_rag,
+                inputs=uploaded_files,
+                outputs=upload_status
+            )
+
+            uploaded_submit.click(
+                fn=user_rag_generate,
+                inputs=uploaded_question,
+                outputs=uploaded_answer
+            )
+
+            clear_user_btn.click(
+                fn=lambda: ("", "*Cleared - Enter a new query above*"),
+                inputs=None,
+                outputs=[uploaded_question, uploaded_answer]
+            )
+
     submit_btn.click(
         fn=generate,
         inputs=question,
