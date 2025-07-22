@@ -1,14 +1,13 @@
 import gradio as gr
 from dotenv import load_dotenv
-from pipeline import RAGPipeline, PipelineConfig
+from pipeline import RAGPipeline
 from utils import load_documents, highlight_documents
 
 load_dotenv()
 
 documents = load_documents()
-pipeline_config = PipelineConfig()
 rag = RAGPipeline(documents)
-rag.setup_pipeline(config=pipeline_config)
+rag.setup_pipeline()
 
 def generate(query):
     raw_answer, source_docs = rag.answer(query)
