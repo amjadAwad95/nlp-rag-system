@@ -2,12 +2,13 @@ from langchain_text_splitters import SentenceTransformersTokenTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
 from langchain_mistralai import ChatMistralAI
-from langchain.chains import RetrievalQA
 from dotenv import load_dotenv
 from reranker import HuggingFaceCrossEncoderReranker
 from langchain_huggingface import HuggingFacePipeline
 from transformers import pipeline
-from pipeline import PipelineConfig
+from config import PipelineConfig
+from .history_pipeline import HistoryPipeline
+from langchain_core.messages import HumanMessage, SystemMessage
 
 load_dotenv()
 
@@ -31,6 +32,7 @@ class RAGPipeline:
         self.documents = documents
         self.rag_pipeline = None
         self.summarization_llm = None
+        self.chat_history = []
 
     def setup_pipeline(self, config: PipelineConfig=PipelineConfig()):
         """
@@ -60,7 +62,8 @@ class RAGPipeline:
             max_retries=config.llm_max_retries
         )
 
-        self.rag_pipeline = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, return_source_documents=True)
+        history = HistoryPipeline()
+        self.rag_pipeline = history.setup(llm, retriever)
 
         hf_pipeline = pipeline("summarization", model=config.summarization_model)
         self.summarization_llm = HuggingFacePipeline(pipeline=hf_pipeline)
@@ -76,9 +79,12 @@ class RAGPipeline:
         if not self.rag_pipeline:
             raise RuntimeError("Pipeline not initialized. Call setup_pipeline() first.")
 
-        response = self.rag_pipeline.invoke(question)
-        raw_answer = response["result"]
-        source_docs = response["source_documents"]
+        response = self.rag_pipeline.invoke({"input": question, "chat_history": self.chat_history})
+        raw_answer = response["answer"]
+        source_docs = response["context"]
+
+        self.chat_history.append(HumanMessage(content=question))
+        self.chat_history.append(SystemMessage(content=raw_answer))
 
         return raw_answer, source_docs
 

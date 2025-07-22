@@ -1,4 +1,4 @@
-from .pipeline_config import PipelineConfig
 from .rag_pipeline import RAGPipeline
+from .history_pipeline import HistoryPipeline
 
-__all__ = ["PipelineConfig", "RAGPipeline"]
+__all__ = ["RAGPipeline", "HistoryPipeline"]
