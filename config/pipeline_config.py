@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from .history_config import HistoryConfig
 
 
 @dataclass
@@ -18,6 +19,7 @@ class PipelineConfig:
     """
     tokens_per_chunk: int = 300
     chunk_overlap: int = 30
+    spliter_model_name: str = "sentence-transformers/all-mpnet-base-v2"
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     retriever_k: int = 20
     reranker_model_name: str = "BAAI/bge-reranker-v2-m3"
@@ -25,3 +27,4 @@ class PipelineConfig:
     llm_temperature: float = 0.8
     llm_max_retries: int = 2
     summarization_model: str = "facebook/bart-large-cnn"
+    history_config: HistoryConfig = HistoryConfig

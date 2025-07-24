@@ -12,3 +12,4 @@ langchain-huggingface==0.3.0
 langchain-mistralai==0.2.11
 gradio==5.37.0
 FlashRank==0.2.10
+langdetect==1.0.9

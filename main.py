@@ -2,6 +2,8 @@ import gradio as gr
 from dotenv import load_dotenv
 from pipeline import RAGPipeline
 from utils import load_documents, highlight_documents, load_uploaded_documents
+from langdetect import detect
+from arabic_config import arabic_pipeline_config
 
 load_dotenv()
 
@@ -9,7 +11,7 @@ documents = load_documents()
 rag = RAGPipeline(documents)
 rag.setup_pipeline()
 
-uploaded_rag_pipeline = {"rag": None}
+uploaded_rag_pipeline = {"rag": None, "rtl":False}
 
 def generate(query):
     raw_answer, source_docs = rag.answer(query)
@@ -28,8 +30,20 @@ def setup_user_rag(files):
         return "File not found"
     documents = load_uploaded_documents(files)
 
+    text = ""
+
+    for doc in documents:
+        text += doc.page_content
+
+    main_language = detect(text)
+
     user_rag = RAGPipeline(documents)
-    user_rag.setup_pipeline()
+    if main_language == "ar":
+        user_rag.setup_pipeline(config=arabic_pipeline_config)
+        uploaded_rag_pipeline["rtl"] = True
+    else:
+        user_rag.setup_pipeline()
+        uploaded_rag_pipeline["rtl"] = False
 
     uploaded_rag_pipeline["rag"] = user_rag
 
@@ -40,11 +54,16 @@ def user_rag_generate(query):
     user_rag = uploaded_rag_pipeline["rag"]
 
     if not uploaded_rag_pipeline["rag"]:
-        return "Please upload PDFs first."
+        return gr.update(value="*Please upload PDFs first.*")
 
     raw_answer, source_docs = user_rag.answer(query)
 
-    return raw_answer
+    if uploaded_rag_pipeline["rtl"]:
+        wrapped = f'<div dir="rtl" style="text-align: right;">{raw_answer}</div>'
+    else:
+        wrapped = raw_answer
+
+    return wrapped
 
 css = """
     .gradio-container {
