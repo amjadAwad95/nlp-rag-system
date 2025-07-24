@@ -42,6 +42,7 @@ class RAGPipeline:
         :param config: A PipelineConfig instance containing model names, parameters, and options.
         """
         text_splitter = SentenceTransformersTokenTextSplitter(
+            model_name=config.spliter_model_name,
             tokens_per_chunk=config.tokens_per_chunk,
             chunk_overlap=config.chunk_overlap
         )
@@ -62,7 +63,7 @@ class RAGPipeline:
             max_retries=config.llm_max_retries
         )
 
-        history = HistoryPipeline()
+        history = HistoryPipeline(config=config.history_config)
         self.rag_pipeline = history.setup(llm, retriever)
 
         hf_pipeline = pipeline("summarization", model=config.summarization_model)
