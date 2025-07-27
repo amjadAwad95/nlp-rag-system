@@ -13,3 +13,6 @@ langchain-mistralai==0.2.11
 gradio==5.37.0
 FlashRank==0.2.10
 langdetect==1.0.9
+fastapi==.116.1
+uvicorn==0.35.0
+pymongo==4.13.2
