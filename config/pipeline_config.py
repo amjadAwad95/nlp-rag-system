@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from .history_config import HistoryConfig
-
+from models import ChatType
 
 @dataclass
 class PipelineConfig:
@@ -26,5 +26,8 @@ class PipelineConfig:
     llm_model: str = "mistral-medium-latest"
     llm_temperature: float = 0.8
     llm_max_retries: int = 2
-    summarization_model: str = "facebook/bart-large-cnn"
     history_config: HistoryConfig = HistoryConfig
+    chat_type: ChatType = ChatType.nlp
+    vectorstore_folder_path: str = "rag_system"
+
+

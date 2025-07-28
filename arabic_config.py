@@ -1,4 +1,5 @@
 from config import PipelineConfig, HistoryConfig
+from models import ChatType
 
 arabic_history_config = HistoryConfig(
     system_prompt="""
@@ -26,6 +27,6 @@ arabic_pipeline_config = PipelineConfig(
     llm_model= "mistral-medium-latest",
     llm_temperature= 0.8,
     llm_max_retries= 2,
-    summarization_model= "facebook/bart-large-cnn",
     history_config=arabic_history_config,
+    chat_type=ChatType.doc
 )
