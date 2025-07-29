@@ -74,6 +74,7 @@ source .venv/bin/activate  # on Windows: .venv\Scripts\activate
 ```file
 GOOGLE_API_KEY = <GOOGLE_API_KEY>
 MISTRAL_API_KEY = <MISTRAL_API_KEY>
+MONGO_URI = <MONGO_URI>
 ```
 
 4. Install the dependencies:
@@ -84,8 +85,14 @@ pip install -r requirements.txt
 
 5. Run the app:
 
+to run gradio app
 ```bash
-python main.py
+python app.py
+```
+
+to run FastAPI
+```bash
+uvicorn main:app --reload
 ```
 or
 ```bash
